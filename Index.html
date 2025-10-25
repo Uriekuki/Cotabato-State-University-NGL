@@ -1,0 +1,348 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Anonymous School Suggestions</title>
+    <!-- Load Tailwind CSS -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    <!-- Load EmailJS SDK -->
+    <script type="text/javascript" src="https://cdn.jsdelivr.net/npm/@emailjs/browser@3/dist/email.min.js"></script>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600;700&display=swap" rel="stylesheet">
+    <style>
+        /* Apply the Inter font globally */
+        body {
+            font-family: 'Inter', sans-serif;
+        }
+        /* Custom scrollbar for the textarea */
+        textarea::-webkit-scrollbar {
+            width: 8px;
+        }
+        textarea::-webkit-scrollbar-thumb {
+            background-color: #A0522D; /* A slightly darker shade of maroon/brown */
+            border-radius: 4px;
+        }
+        textarea::-webkit-scrollbar-track {
+            background-color: #FFFDD0; /* Cream background */
+        }
+    </style>
+    <script>
+        // --- CUSTOM TAILWIND CONFIGURATION ---
+        tailwind.config = {
+            theme: {
+                extend: {
+                    colors: {
+                        'primary': '#800000', // Maroon
+                        'primary-dark': '#6D0000', // Darker Maroon for hover
+                        'secondary': '#FFFDD0', // Cream
+                        'text-dark': '#333333', // Dark text for readability
+                    },
+                }
+            }
+        }
+        
+        // --- JAVASCRIPT LOGIC FOR EMAILJS ---
+        
+        // 1. SERVICE ID: CONFIRMED
+        const SERVICE_ID = 'service_5vym19d'; 
+        // 2. TEMPLATE ID: CONFIRMED
+        const TEMPLATE_ID = 'template_pole8ig'; 
+        // 3. PUBLIC KEY (User ID): CONFIRMED
+        const PUBLIC_KEY = 'BhklaGa2rEr-QuWYV'; 
+        
+        // Target email address where the message will be forwarded (hidden from user).
+        const TARGET_EMAIL = 'gesov88177@filipx.com';
+
+        // Initialize EmailJS with the public key on load
+        window.onload = function() {
+             emailjs.init(PUBLIC_KEY);
+        }
+
+        async function sendSuggestion(event) {
+            event.preventDefault(); // Stop the default form submission
+
+            const form = document.getElementById('suggestion-form');
+            const messageEl = document.getElementById('message');
+            const statusEl = document.getElementById('status-message');
+            const submitBtn = document.getElementById('submit-btn');
+
+            const suggestionText = messageEl.value.trim();
+
+            if (suggestionText.length < 10) {
+                statusEl.innerHTML = '<p class="text-red-600">Please write a suggestion of at least 10 characters.</p>';
+                return;
+            }
+
+            // Set loading state
+            statusEl.innerHTML = '<p class="text-primary-dark">Sending suggestion anonymously...</p>';
+            submitBtn.disabled = true;
+            submitBtn.classList.add('opacity-50', 'cursor-not-allowed');
+
+            // This is the template parameters object, containing the message and the recipient email.
+            const templateParams = {
+                // This variable name must match the one you set up in your EmailJS template!
+                anonymous_suggestion: suggestionText,
+                to_email: TARGET_EMAIL, 
+            };
+
+            try {
+                // Use exponential backoff for retries
+                const maxRetries = 3;
+                let attempt = 0;
+                let response;
+
+                while (attempt < maxRetries) {
+                    try {
+                        // The core function call to send the email
+                        response = await emailjs.send(SERVICE_ID, TEMPLATE_ID, templateParams);
+                        // If successful, break the loop
+                        break; 
+                    } catch (error) {
+                        attempt++;
+                        if (attempt >= maxRetries) throw error; 
+                        
+                        // Wait with exponential backoff before retrying
+                        const delay = Math.pow(2, attempt) * 1000 + Math.random() * 1000;
+                        await new Promise(resolve => setTimeout(resolve, delay));
+                    }
+                }
+
+                if (response.status === 200) {
+                    statusEl.innerHTML = '<p class="text-green-600 font-semibold flex items-center justify-center">Suggestion Sent! Your feedback will be reviewed. 🎉</p>';
+                    messageEl.value = ''; // Clear form on success
+                } else {
+                    throw new Error('EmailJS failed with status: ' + response.status);
+                }
+            } catch (error) {
+                console.error('EmailJS Error:', error);
+                statusEl.innerHTML = '<p class="text-red-600 flex items-center justify-center">❌ Failed to send. Please ensure your EmailJS setup is complete (template fields match) and try again.</p>';
+            } finally {
+                submitBtn.disabled = false;
+                submitBtn.classList.remove('opacity-50', 'cursor-not-allowed');
+            }
+        }
+    </script>
+</head>
+<body class="bg-gray-100 min-h-screen p-4 flex items-center justify-center">
+    <div class="w-full max-w-lg bg-secondary shadow-2xl p-8 sm:p-10 rounded-xl border-t-8 border-primary transition-all duration-300">
+
+        <!-- Header -->
+        <header class="text-center mb-8">
+            <h1 class="text-4xl font-bold text-primary mb-2">School Suggestion Box</h1>
+            <p class="text-lg text-text-dark">Send an Anonymous Message</p>
+        </header>
+
+        <!-- Form Area -->
+        <form id="suggestion-form" onsubmit="sendSuggestion(event)" class="space-y-6">
+            
+            <!-- Message Input -->
+            <div>
+                <label for="message" class="block text-lg font-medium text-primary mb-2">Your Suggestion:</label>
+                <textarea 
+                    id="message" 
+                    name="message" 
+                    rows="8" 
+                    class="w-full p-4 border-2 border-primary/50 bg-white rounded-lg focus:ring-primary focus:border-primary transition duration-150 shadow-inner resize-none text-text-dark" 
+                    placeholder="Type your anonymous feedback or suggestion here... Your identity is protected." 
+                    required 
+                    minlength="10"
+                ></textarea>
+            </div>
+
+            <!-- Disclaimer -->
+            <div class="text-center text-sm text-gray-600">
+                <p>Your message is **completely anonymous**. Once submitted, it will be **acknowledged and reviewed** by the appropriate school staff.</p>
+            </div>
+
+            <!-- Status Message Area -->
+            <div id="status-message" class="text-center h-6">
+                <!-- Status messages (Success/Error/Loading) will appear here -->
+            </div>
+
+            <!-- Submit Button -->
+            <button 
+                type="submit" 
+                id="submit-btn"
+                class="w-full flex items-center justify-center px-6 py-3 border border-transparent text-lg font-medium rounded-xl shadow-lg text-secondary bg-primary hover:bg-primary-dark focus:outline-none focus:ring-4 focus:ring-primary/50 transition duration-150 ease-in-out transform hover:scale-[1.01]"
+            >
+                Submit Suggestion A<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Anonymous School Suggestions</title>
+    <!-- Load Tailwind CSS -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    <!-- Load EmailJS SDK -->
+    <script type="text/javascript" src="https://cdn.jsdelivr.net/npm/@emailjs/browser@3/dist/email.min.js"></script>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600;700&display=swap" rel="stylesheet">
+    <style>
+        /* Apply the Inter font globally */
+        body {
+            font-family: 'Inter', sans-serif;
+        }
+        /* Custom scrollbar for the textarea */
+        textarea::-webkit-scrollbar {
+            width: 8px;
+        }
+        textarea::-webkit-scrollbar-thumb {
+            background-color: #A0522D; /* A slightly darker shade of maroon/brown */
+            border-radius: 4px;
+        }
+        textarea::-webkit-scrollbar-track {
+            background-color: #FFFDD0; /* Cream background */
+        }
+    </style>
+    <script>
+        // --- CUSTOM TAILWIND CONFIGURATION ---
+        tailwind.config = {
+            theme: {
+                extend: {
+                    colors: {
+                        'primary': '#800000', // Maroon
+                        'primary-dark': '#6D0000', // Darker Maroon for hover
+                        'secondary': '#FFFDD0', // Cream
+                        'text-dark': '#333333', // Dark text for readability
+                    },
+                }
+            }
+        }
+        
+        // --- JAVASCRIPT LOGIC FOR EMAILJS ---
+        
+        // 1. SERVICE ID: CONFIRMED
+        const SERVICE_ID = 'service_5vym19d'; 
+        // 2. TEMPLATE ID: CONFIRMED
+        const TEMPLATE_ID = 'template_pole8ig'; 
+        // 3. PUBLIC KEY (User ID): CONFIRMED
+        const PUBLIC_KEY = 'BhklaGa2rEr-QuWYV'; 
+        
+        // Target email address where the message will be forwarded (hidden from user).
+        const TARGET_EMAIL = 'gesov88177@filipx.com';
+
+        // Initialize EmailJS with the public key on load
+        window.onload = function() {
+             emailjs.init(PUBLIC_KEY);
+        }
+
+        async function sendSuggestion(event) {
+            event.preventDefault(); // Stop the default form submission
+
+            const form = document.getElementById('suggestion-form');
+            const messageEl = document.getElementById('message');
+            const statusEl = document.getElementById('status-message');
+            const submitBtn = document.getElementById('submit-btn');
+
+            const suggestionText = messageEl.value.trim();
+
+            if (suggestionText.length < 10) {
+                statusEl.innerHTML = '<p class="text-red-600">Please write a suggestion of at least 10 characters.</p>';
+                return;
+            }
+
+            // Set loading state
+            statusEl.innerHTML = '<p class="text-primary-dark">Sending suggestion anonymously...</p>';
+            submitBtn.disabled = true;
+            submitBtn.classList.add('opacity-50', 'cursor-not-allowed');
+
+            // This is the template parameters object, containing the message and the recipient email.
+            const templateParams = {
+                // This variable name must match the one you set up in your EmailJS template!
+                anonymous_suggestion: suggestionText,
+                to_email: TARGET_EMAIL, 
+            };
+
+            try {
+                // Use exponential backoff for retries
+                const maxRetries = 3;
+                let attempt = 0;
+                let response;
+
+                while (attempt < maxRetries) {
+                    try {
+                        // The core function call to send the email
+                        response = await emailjs.send(SERVICE_ID, TEMPLATE_ID, templateParams);
+                        // If successful, break the loop
+                        break; 
+                    } catch (error) {
+                        attempt++;
+                        if (attempt >= maxRetries) throw error; 
+                        
+                        // Wait with exponential backoff before retrying
+                        const delay = Math.pow(2, attempt) * 1000 + Math.random() * 1000;
+                        await new Promise(resolve => setTimeout(resolve, delay));
+                    }
+                }
+
+                if (response.status === 200) {
+                    statusEl.innerHTML = '<p class="text-green-600 font-semibold flex items-center justify-center">Suggestion Sent! Your feedback will be reviewed. 🎉</p>';
+                    messageEl.value = ''; // Clear form on success
+                } else {
+                    throw new Error('EmailJS failed with status: ' + response.status);
+                }
+            } catch (error) {
+                console.error('EmailJS Error:', error);
+                statusEl.innerHTML = '<p class="text-red-600 flex items-center justify-center">❌ Failed to send. Please ensure your EmailJS setup is complete (template fields match) and try again.</p>';
+            } finally {
+                submitBtn.disabled = false;
+                submitBtn.classList.remove('opacity-50', 'cursor-not-allowed');
+            }
+        }
+    </script>
+</head>
+<body class="bg-gray-100 min-h-screen p-4 flex items-center justify-center">
+    <div class="w-full max-w-lg bg-secondary shadow-2xl p-8 sm:p-10 rounded-xl border-t-8 border-primary transition-all duration-300">
+
+        <!-- Header -->
+        <header class="text-center mb-8">
+            <h1 class="text-4xl font-bold text-primary mb-2">School Suggestion Box</h1>
+            <p class="text-lg text-text-dark">Send an Anonymous Message</p>
+        </header>
+
+        <!-- Form Area -->
+        <form id="suggestion-form" onsubmit="sendSuggestion(event)" class="space-y-6">
+            
+            <!-- Message Input -->
+            <div>
+                <label for="message" class="block text-lg font-medium text-primary mb-2">Your Suggestion:</label>
+                <textarea 
+                    id="message" 
+                    name="message" 
+                    rows="8" 
+                    class="w-full p-4 border-2 border-primary/50 bg-white rounded-lg focus:ring-primary focus:border-primary transition duration-150 shadow-inner resize-none text-text-dark" 
+                    placeholder="Type your anonymous feedback or suggestion here... Your identity is protected." 
+                    required 
+                    minlength="10"
+                ></textarea>
+            </div>
+
+            <!-- Disclaimer -->
+            <div class="text-center text-sm text-gray-600">
+                <p>Your message is **completely anonymous**. Once submitted, it will be **acknowledged and reviewed** by the appropriate school staff.</p>
+            </div>
+
+            <!-- Status Message Area -->
+            <div id="status-message" class="text-center h-6">
+                <!-- Status messages (Success/Error/Loading) will appear here -->
+            </div>
+
+            <!-- Submit Button -->
+            <button 
+                type="submit" 
+                id="submit-btn"
+                class="w-full flex items-center justify-center px-6 py-3 border border-transparent text-lg font-medium rounded-xl shadow-lg text-secondary bg-primary hover:bg-primary-dark focus:outline-none focus:ring-4 focus:ring-primary/50 transition duration-150 ease-in-out transform hover:scale-[1.01]"
+            >
+                Submit Suggestion Anonymously
+            </button>
+        </form>
+    </div>
+</body>
+</html>
+
+nonymously
+            </button>
+        </form>
+    </div>
+</body>
+</html>
+
